@@ -1,0 +1,21 @@
+{
+    "name": "taalendigitaal/bootstrap-summernote",
+    "description": "Bootstrap Wysiwyg Editor",
+    "type": "component",
+    "require": {
+        "robloach/component-installer": "*"
+    },
+    "extra": {
+        "component": {
+            "scripts": [
+                "summernote.js"
+            ],
+            "styles": [
+                "dist/summernote.css"
+            ],
+            "files": [
+                "dist/summernote.min.js"
+            ]
+        }
+    }
+}
