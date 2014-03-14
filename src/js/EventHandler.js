@@ -42,7 +42,7 @@ define([
       // else insert Image as dataURL
       } else {
         $.each(files, function (idx, file) {
-          async.readFileAsDataURL(file).done(function (sDataURL) {
+          async.readFileAsDataURL(file).then(function (sDataURL) {
             editor.insertImage($editable, sDataURL);
           }).fail(function () {
             if (callbacks.onImageUploadError) {
@@ -62,13 +62,11 @@ define([
       var bCmd = agent.bMac ? event.metaKey : event.ctrlKey,
           bShift = event.shiftKey, keyCode = event.keyCode;
 
-      // optimize
-      var bExecCmd = (bCmd || bShift || keyCode === key.TAB);
-      var oLayoutInfo = (bExecCmd) ? makeLayoutInfo(event.target) : null;
+      var oLayoutInfo = makeLayoutInfo(event.target);
+      var options = oLayoutInfo.editor().data('options');
 
-      var tabsize = oLayoutInfo && oLayoutInfo.editor().data('options').tabsize;
-      if (keyCode === key.TAB && tabsize) {
-        editor.tab(oLayoutInfo.editable(), tabsize);
+      if (keyCode === key.TAB) {
+        editor.tab(oLayoutInfo.editable(), options.tabsize, bShift);
       } else if (bCmd && ((bShift && keyCode === key.Z) || keyCode === key.Y)) {
         editor.redo(oLayoutInfo.editable());
       } else if (bCmd && keyCode === key.Z) {
@@ -84,8 +82,14 @@ define([
       } else if (bCmd && keyCode === key.BACKSLACH) {
         editor.removeFormat(oLayoutInfo.editable());
       } else if (bCmd && keyCode === key.K) {
-        editor.setLinkDialog(oLayoutInfo.editable(), function (linkInfo, cb) {
-          dialog.showLinkDialog(oLayoutInfo.editable(), oLayoutInfo.dialog(), linkInfo, cb);
+        var $editable = oLayoutInfo.editable(),
+            $dialog = oLayoutInfo.dialog(),
+            linkInfo = editor.getLinkInfo();
+
+        editor.saveRange($editable);
+        dialog.showLinkDialog($editable, $dialog, linkInfo).then(function (sLinkUrl, bNewWindow) {
+          editor.restoreRange($editable);
+          editor.createLink($editable, sLinkUrl, bNewWindow);
         });
       } else if (bCmd && keyCode === key.SLASH) {
         dialog.showHelpDialog(oLayoutInfo.editable(), oLayoutInfo.dialog());
@@ -120,16 +124,6 @@ define([
         return; // not matched
       }
       event.preventDefault(); //prevent default event for FF
-    };
-
-    var hDropImage = function (event) {
-      var dataTransfer = event.originalEvent.dataTransfer;
-      if (dataTransfer && dataTransfer.files) {
-        var oLayoutInfo = makeLayoutInfo(event.currentTarget || event.target);
-        oLayoutInfo.editable().focus();
-        insertImages(oLayoutInfo.editable(), dataTransfer.files);
-      }
-      event.preventDefault();
     };
 
     var hMousedown = function (event) {
@@ -171,10 +165,11 @@ define([
             scrollTop = $(document).scrollTop();
 
         $editor.on('mousemove', function (event) {
+          
           editor.resizeTo({
             x: event.clientX - posStart.left,
             y: event.clientY - (posStart.top - scrollTop)
-          }, $target);
+          }, $target, !event.shiftKey);
 
           handle.update($handle, {image: elTarget});
           popover.update($popover, {image: elTarget});
@@ -217,17 +212,17 @@ define([
 
         var options = $editor.data('options');
 
-        // before command
-        var elTarget;
-        if ($.inArray(sEvent, ['resize', 'floatMe']) !== -1) {
+        // before command: detect control selection element($target)
+        var $target;
+        if ($.inArray(sEvent, ['resize', 'floatMe', 'removeMedia']) !== -1) {
           var $handle = oLayoutInfo.handle();
           var $selection = $handle.find('.note-control-selection');
-          elTarget = $selection.data('target');
+          $target = $($selection.data('target'));
         }
 
         if (editor[sEvent]) { // on command
           $editable.trigger('focus');
-          editor[sEvent]($editable, sValue, elTarget);
+          editor[sEvent]($editable, sValue, $target);
         }
 
         // after command
@@ -235,21 +230,32 @@ define([
           toolbar.updateRecentColor($btn[0], sEvent, sValue);
         } else if (sEvent === 'showLinkDialog') { // popover to dialog
           $editable.focus();
-          editor.setLinkDialog($editable, function (linkInfo, cb) {
-            dialog.showLinkDialog($editable, $dialog, linkInfo, cb);
+          var linkInfo = editor.getLinkInfo();
+
+          editor.saveRange($editable);
+          dialog.showLinkDialog($editable, $dialog, linkInfo).then(function (sLinkUrl, bNewWindow) {
+            editor.restoreRange($editable);
+            editor.createLink($editable, sLinkUrl, bNewWindow);
           });
         } else if (sEvent === 'showImageDialog') {
           $editable.focus();
-          dialog.showImageDialog($editable, $dialog, function (files) {
-            insertImages($editable, files);
-          }, function (sUrl) {
-            editor.restoreRange($editable);
-            editor.insertImage($editable, sUrl);
+
+          dialog.showImageDialog($editable, $dialog).then(function (data) {
+            if (typeof data === 'string') {
+              insertImages($editable, data);
+            } else {
+              editor.restoreRange($editable);
+              editor.insertImage($editable, data);
+            }
           });
         } else if (sEvent === 'showVideoDialog') {
           $editable.focus();
-          editor.setVideoDialog($editable, function (linkInfo, cb) {
-            dialog.showVideoDialog($editable, $dialog, linkInfo, cb);
+          var videoInfo = editor.getVideoInfo();
+
+          editor.saveRange($editable);
+          dialog.showVideoDialog($editable, $dialog, videoInfo).then(function (sUrl) {
+            editor.restoreRange($editable);
+            editor.insertVideo($editable, sUrl);
           });
         } else if (sEvent === 'showHelpDialog') {
           dialog.showHelpDialog($editable, $dialog);
@@ -262,7 +268,7 @@ define([
             var nHeight = $(window).height() - $toolbar.outerHeight();
             $editable.css('height', nHeight);
             $codable.css('height', nHeight);
-            var cmEditor = $codable.data('cmEditor');
+            cmEditor = $codable.data('cmEditor');
             if (cmEditor) {
               cmEditor.setSize(null, nHeight);
             }
@@ -380,13 +386,18 @@ define([
       var $unhighlighted = $picker.find('.note-dimension-picker-unhighlighted');
 
       var posOffset;
+      // HTML5 with jQuery - e.offsetX is undefined in Firefox
       if (event.offsetX === undefined) {
-        // HTML5 with jQuery - e.offsetX is undefined in Firefox
         var posCatcher = $(event.target).offset();
-        posOffset = {x: event.pageX - posCatcher.left,
-                     y: event.pageY - posCatcher.top};
+        posOffset = {
+          x: event.pageX - posCatcher.left,
+          y: event.pageY - posCatcher.top
+        };
       } else {
-        posOffset = {x: event.offsetX, y: event.offsetY};
+        posOffset = {
+          x: event.offsetX,
+          y: event.offsetY
+        };
       }
 
       var dim = {
@@ -447,8 +458,14 @@ define([
       });
 
       // attach dropImage
-      $dropzone.on('drop', function (e) {
-        hDropImage(e);
+      $dropzone.on('drop', function (event) {
+        var dataTransfer = event.originalEvent.dataTransfer;
+        if (dataTransfer && dataTransfer.files) {
+          var oLayoutInfo = makeLayoutInfo(event.currentTarget || event.target);
+          oLayoutInfo.editable().focus();
+          insertImages(oLayoutInfo.editable(), dataTransfer.files);
+        }
+        event.preventDefault();
       }).on('dragover', false); // prevent default dragover event
     };
 
@@ -490,6 +507,14 @@ define([
 
       // save options on editor
       oLayoutInfo.editor.data('options', options);
+
+      // ret styleWithCSS for backColor / foreColor clearing with 'inherit'.
+      if (options.styleWithSpan && !agent.bMSIE) {
+        // protect FF Error: NS_ERROR_FAILURE: Failure
+        setTimeout(function () {
+          document.execCommand('styleWithCSS', 0, true);
+        });
+      }
 
       // History
       oLayoutInfo.editable.data('NoteHistory', new History());

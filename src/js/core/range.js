@@ -149,6 +149,14 @@ define([
         }));
         return $.map(list.clusterBy(aMatched, func.eq2), list.head);
       };
+
+      /**
+       * returns commonAncestor of range
+       * @return {Element} - commonAncestor
+       */
+      this.commonAncestor = function () {
+        return dom.commonAncestor(sc, ec);
+      };
       
       /**
        * makeIsOn: return isOn(pred) function
@@ -156,7 +164,7 @@ define([
       var makeIsOn = function (pred) {
         return function () {
           var elAncestor = dom.ancestor(sc, pred);
-          return elAncestor && (elAncestor === dom.ancestor(ec, pred));
+          return !!elAncestor && (elAncestor === dom.ancestor(ec, pred));
         };
       };
   
@@ -166,6 +174,8 @@ define([
       this.isOnList = makeIsOn(dom.isList);
       // isOnAnchor: judge whether range is on anchor node or not
       this.isOnAnchor = makeIsOn(dom.isAnchor);
+      // isOnAnchor: judge whether range is on cell node or not
+      this.isOnCell = makeIsOn(dom.isCell);
       // isCollapsed: judge whether range was collapsed
       this.isCollapsed = function () { return sc === ec && so === eo; };
 

@@ -4,10 +4,11 @@ define([
 ], function (agent, dom) {
   /**
    * Style
+   * @class
    */
   var Style = function () {
     /**
-     * passing an array of style properties to .css() 
+     * passing an array of style properties to .css()
      * will result in an object of property-value pairs.
      * (compability with version < 1.9)
      *
@@ -47,7 +48,7 @@ define([
      */
     this.current = function (rng, elTarget) {
       var $cont = $(dom.isText(rng.sc) ? rng.sc.parentNode : rng.sc);
-      var properties = ['font-size', 'text-align', 'list-style-type', 'line-height'];
+      var properties = ['font-family', 'font-size', 'text-align', 'list-style-type', 'line-height'];
       var oStyle = jQueryCSS($cont, properties) || {};
 
       oStyle['font-size'] = parseInt(oStyle['font-size']);

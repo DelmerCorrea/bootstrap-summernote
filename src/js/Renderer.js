@@ -7,7 +7,7 @@ define([
    * rendering toolbar and editable
    */
   var Renderer = function () {
-    var tplToolbarInfo, tplPopover, tplhandle, tplDialog, tplStatusbar;
+    var tplToolbarInfo, tplPopover, tplHandle, tplDialog, tplStatusbar;
 
     /* jshint ignore:start */
     tplToolbarInfo = {
@@ -44,6 +44,22 @@ define([
                  '<li><a data-event="formatBlock" data-value="h5"><h5>' + lang.style.h5 + '</h5></a></li>' +
                  '<li><a data-event="formatBlock" data-value="h6"><h6>' + lang.style.h6 + '</h6></a></li>' +
                '</ul>';
+      },
+      fontname: function(lang) {
+        var aFont = [
+          'Serif', 'Sans', 'Arial', 'Arial Black', 'Courier',
+          'Courier New', 'Comic Sans MS', 'Helvetica', 'Impact', 'Lucida Grande',
+          'Lucida Sans', 'Tahoma', 'Times', 'Times New Roman', 'Verdana'
+        ];
+
+        var sMarkup = '<button type="button" class="btn btn-default btn-sm btn-small dropdown-toggle" data-toggle="dropdown" title="' + lang.font.name + '" tabindex="-1"><span class="note-current-fontname">Arial</span> <b class="caret"></b></button>';
+        sMarkup += '<ul class="dropdown-menu">';
+        for (var idx = 0; idx < aFont.length; idx++ ) {
+          sMarkup += '<li><a data-event="fontName" data-value="' + aFont[idx] + '"><i class="fa fa-check icon-ok"></i> ' + aFont[idx] + '</a></li>';
+        }
+        sMarkup += '</ul>';
+
+        return sMarkup;
       },
       fontsize: function (lang) {
         return '<button type="button" class="btn btn-default btn-sm btn-small dropdown-toggle" data-toggle="dropdown" title="' + lang.font.size + '" tabindex="-1"><span class="note-current-fontsize">11</span> <b class="caret"></b></button>' +
@@ -166,21 +182,26 @@ define([
                       '<button type="button" class="btn btn-default btn-sm btn-small" title="' + lang.image.floatRight + '" data-event="floatMe" data-value="right" tabindex="-1"><i class="fa fa-align-right icon-align-right"></i></button>' +
                       '<button type="button" class="btn btn-default btn-sm btn-small" title="' + lang.image.floatNone + '" data-event="floatMe" data-value="none" tabindex="-1"><i class="fa fa-align-justify icon-align-justify"></i></button>' +
                     '</div>' +
+                    '<div class="btn-group">' +
+                      '<button type="button" class="btn btn-default btn-sm btn-small" title="' + lang.image.remove + '" data-event="removeMedia" data-value="none" tabindex="-1"><i class="fa fa-trash-o icon-trash"></i></button>' +
+                    '</div>' +
                   '</div>' +
                 '</div>' +
               '</div>';
     };
 
-    tplhandle = '<div class="note-handle">' +
-                '<div class="note-control-selection">' +
-                  '<div class="note-control-selection-bg"></div>' +
-                  '<div class="note-control-holder note-control-nw"></div>' +
-                  '<div class="note-control-holder note-control-ne"></div>' +
-                  '<div class="note-control-holder note-control-sw"></div>' +
-                  '<div class="note-control-sizing note-control-se"></div>' +
-                  '<div class="note-control-selection-info"></div>' +
-                '</div>' +
-              '</div>';
+    var tplHandle = function () {
+      return '<div class="note-handle">' +
+               '<div class="note-control-selection">' +
+                 '<div class="note-control-selection-bg"></div>' +
+                 '<div class="note-control-holder note-control-nw"></div>' +
+                 '<div class="note-control-holder note-control-ne"></div>' +
+                 '<div class="note-control-holder note-control-sw"></div>' +
+                 '<div class="note-control-sizing note-control-se"></div>' +
+                 '<div class="note-control-selection-info"></div>' +
+               '</div>' +
+             '</div>';
+    };
 
     var tplShortcutText = function (lang, options) {
       return '<table class="note-shortcut">' +
@@ -281,8 +302,8 @@ define([
     };
 
     tplDialog = function (lang, options) {
-      return '<div class="note-dialog">' +
-               '<div class="note-image-dialog modal" aria-hidden="false">' +
+      var tplImageDialog = function () {
+        return '<div class="note-image-dialog modal" aria-hidden="false">' +
                  '<div class="modal-dialog">' +
                    '<div class="modal-content">' +
                      '<div class="modal-header">' +
@@ -302,8 +323,11 @@ define([
                      '</div>' +
                    '</div>' +
                  '</div>' +
-               '</div>' +
-               '<div class="note-link-dialog modal" aria-hidden="false">' +
+               '</div>';
+      };
+
+      var tplLinkDialog = function () {
+        return '<div class="note-link-dialog modal" aria-hidden="false">' +
                  '<div class="modal-dialog">' +
                    '<div class="modal-content">' +
                      '<div class="modal-header">' +
@@ -320,11 +344,13 @@ define([
                            '<label>' + lang.link.url + '</label>' +
                            '<input class="note-link-url form-control span12" type="text" />' +
                          '</div>' +
-                         '<div class="checkbox">' +
-                           '<label>' + '<input type="checkbox" checked> ' +
-                             lang.link.openInNewWindow +
-                           '</label>' +
-                         '</div>' +
+                         (!options.disableLinkTarget ?
+                           '<div class="checkbox">' +
+                             '<label>' + '<input type="checkbox" checked> ' +
+                               lang.link.openInNewWindow +
+                             '</label>' +
+                           '</div>' : ''
+                         ) +
                        '</div>' +
                      '</div>' +
                      '<div class="modal-footer">' +
@@ -332,34 +358,39 @@ define([
                      '</div>' +
                    '</div>' +
                  '</div>' +
-               '</div>' +
-                   '<div class="note-video-dialog modal" aria-hidden="false">' +
-                     '<div class="modal-dialog">' +
-                       '<div class="modal-content">' +
-                         '<div class="modal-header">' +
-                           '<button type="button" class="close" aria-hidden="true" tabindex="-1">&times;</button>' +
-                           '<h4>' + lang.video.insert + '</h4>' +
-                         '</div>' +
-                         '<div class="modal-body">' +
-                           '<div class="row-fluid">' +
+               '</div>';
+      };
 
-                           '<div class="form-group">' +
-                             '<label>' + lang.video.url + '</label>&nbsp;<small class="text-muted">' + lang.video.providers + '</small>' +
-                             '<input class="note-video-url form-control span12" type="text" />' +
-                           '</div>' +
-                           '</div>' +
-                         '</div>' +
-                         '<div class="modal-footer">' +
-                           '<button href="#" class="btn btn-primary note-video-btn disabled" disabled="disabled">' + lang.video.insert + '</button>' +
-                         '</div>' +
+      var tplVideoDialog = function () {
+        return '<div class="note-video-dialog modal" aria-hidden="false">' +
+                 '<div class="modal-dialog">' +
+                   '<div class="modal-content">' +
+                     '<div class="modal-header">' +
+                       '<button type="button" class="close" aria-hidden="true" tabindex="-1">&times;</button>' +
+                       '<h4>' + lang.video.insert + '</h4>' +
+                     '</div>' +
+                     '<div class="modal-body">' +
+                       '<div class="row-fluid">' +
+
+                       '<div class="form-group">' +
+                         '<label>' + lang.video.url + '</label>&nbsp;<small class="text-muted">' + lang.video.providers + '</small>' +
+                         '<input class="note-video-url form-control span12" type="text" />' +
+                       '</div>' +
                        '</div>' +
                      '</div>' +
+                     '<div class="modal-footer">' +
+                       '<button href="#" class="btn btn-primary note-video-btn disabled" disabled="disabled">' + lang.video.insert + '</button>' +
+                     '</div>' +
                    '</div>' +
-               '<div class="note-help-dialog modal" aria-hidden="false">' +
+                 '</div>' +
+               '</div>';
+      };
+
+      var tplHelpDialog = function () {
+        return '<div class="note-help-dialog modal" aria-hidden="false">' +
                  '<div class="modal-dialog">' +
                    '<div class="modal-content">' +
                      '<div class="modal-body">' +
-                       '<div class="modal-background">' +
                        '<a class="modal-close pull-right" aria-hidden="true" tabindex="-1">' + lang.shortcut.close + '</a>' +
                        '<div class="title">' + lang.shortcut.shortcuts + '</div>' +
                        (agent.bMac ? tplShortcutTable(lang, options) : replaceMacKeys(tplShortcutTable(lang, options))) +
@@ -367,11 +398,20 @@ define([
                      '</div>' +
                    '</div>' +
                  '</div>' +
-               '</div>' +
+               '</div>';
+      };
+
+      return '<div class="note-dialog">' +
+               tplImageDialog() +
+               tplLinkDialog() +
+               tplVideoDialog() +
+               tplHelpDialog() +
              '</div>';
     };
 
-    tplStatusbar = '<div class="note-resizebar"><div class="note-icon-bar"></div><div class="note-icon-bar"></div><div class="note-icon-bar"></div></div>';
+    tplStatusbar = function () {
+      return '<div class="note-resizebar"><div class="note-icon-bar"></div><div class="note-icon-bar"></div><div class="note-icon-bar"></div></div>';
+    };
     /* jshint ignore:end */
 
     // createTooltip
@@ -438,7 +478,7 @@ define([
 
       //02. statusbar (resizebar)
       if (options.height > 0) {
-        $('<div class="note-statusbar">' + tplStatusbar + '</div>').prependTo($editor);
+        $('<div class="note-statusbar">' + tplStatusbar() + '</div>').prependTo($editor);
       }
 
       //03. create Editable
@@ -456,11 +496,6 @@ define([
 
       //031. create codable
       $('<textarea class="note-codable"></textarea>').prependTo($editor);
-
-      //032. set styleWithCSS for backColor / foreColor clearing with 'inherit'.
-      setTimeout(function () { // protect FF Error: NS_ERROR_FAILURE: Failure
-        document.execCommand('styleWithCSS', 0, true);
-      });
 
       var langInfo = $.summernote.lang[options.lang];
 
@@ -486,7 +521,7 @@ define([
       createTooltip($popover);
 
       //06. handle(control selection, ...)
-      $(tplhandle).prependTo($editor);
+      $(tplHandle()).prependTo($editor);
 
       //07. create Dialog
       var $dialog = $(tplDialog(langInfo, options)).prependTo($editor);

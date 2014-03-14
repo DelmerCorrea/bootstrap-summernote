@@ -9,20 +9,27 @@ define('settings', function () {
     options: {
       width: null,                  // set editor width
       height: null,                 // set editable height, ex) 300
+
       focus: false,                 // set focus after initilize summernote
+
       tabsize: null,                // size of tab ex) 2 or 4
+      styleWithSpan: true,          // style with span (Chrome and FF)
+
+      disableLinkTarget: false,     // hide link Target Checkbox
       disableDragAndDrop: false,    // disable drag and drop event
+
       codemirror: null,             // codemirror options
 
       // language
-      lang: 'en-US',   // language 'en-US', 'ko-KR', ...
-      direction: null, // text direction, ex) 'rtl'
+      lang: 'en-US',                // language 'en-US', 'ko-KR', ...
+      direction: null,              // text direction, ex) 'rtl'
 
       // default toolbar
       toolbar: [
         ['style', ['style']],
         ['font', ['bold', 'italic', 'underline', 'clear']],
-        ['fontsize', ['fontsize']],
+        ['fontname', ['fontname']],
+        // ['fontsize', ['fontsize']], Still buggy
         ['color', ['color']],
         ['para', ['ul', 'ol', 'paragraph']],
         ['height', ['height']],
@@ -54,6 +61,7 @@ define('settings', function () {
           strike: 'Strike',
           clear: 'Remove Font Style',
           height: 'Line Height',
+          name: 'Font Family',
           size: 'Font Size'
         },
         image: {
@@ -67,7 +75,8 @@ define('settings', function () {
           floatNone: 'Float None',
           dragImageHere: 'Drag an image here',
           selectFromFiles: 'Select from files',
-          url: 'Image URL'
+          url: 'Image URL',
+          remove: 'Remove Image'
         },
         link: {
           link: 'Link',

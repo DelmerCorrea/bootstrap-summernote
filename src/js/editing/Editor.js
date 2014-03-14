@@ -3,6 +3,7 @@ define([
 ], function (agent, dom, range, async, Style, Table) {
   /**
    * Editor
+   * @class
    */
   var Editor = function () {
 
@@ -12,7 +13,7 @@ define([
     /**
      * save current range
      *
-     * @param {jQuery} $editable 
+     * @param {jQuery} $editable
      */
     this.saveRange = function ($editable) {
       $editable.data('range', range.create());
@@ -67,7 +68,7 @@ define([
                 'justifyLeft', 'justifyCenter', 'justifyRight', 'justifyFull',
                 'insertOrderedList', 'insertUnorderedList',
                 'indent', 'outdent', 'formatBlock', 'removeFormat',
-                'backColor', 'foreColor', 'insertHorizontalRule'];
+                'backColor', 'foreColor', 'insertHorizontalRule', 'fontName'];
 
     for (var idx = 0, len = aCmd.length; idx < len; idx ++) {
       this[aCmd[idx]] = (function (sCmd) {
@@ -80,20 +81,33 @@ define([
     /* jshint ignore:end */
 
     /**
-     * handle tab key
-     *
-     * @param {jQuery} $editable
-     * @param {Number} tabsize
+     * @param {jQuery} $editable 
+     * @param {WrappedRange} rng
+     * @param {Number} nTabsize
      */
-    this.tab = function ($editable, tabsize) {
+    var insertTab = function ($editable, rng, nTabsize) {
       recordUndo($editable);
-      var rng = range.create();
-      var sNbsp = new Array(tabsize + 1).join('&nbsp;');
+      var sNbsp = new Array(nTabsize + 1).join('&nbsp;');
       rng.insertNode($('<span id="noteTab">' + sNbsp + '</span>')[0]);
       var $tab = $('#noteTab').removeAttr('id');
       rng = range.create($tab[0], 1);
       rng.select();
       dom.remove($tab[0]);
+    };
+
+    /**
+     * handle tab key
+     * @param {jQuery} $editable 
+     * @param {Number} nTabsize
+     * @param {Boolean} bShift
+     */
+    this.tab = function ($editable, nTabsize, bShift) {
+      var rng = range.create();
+      if (rng.isCollapsed() && rng.isOnCell()) {
+        table.tab(rng, bShift);
+      } else {
+        insertTab($editable, rng, nTabsize);
+      }
     };
 
     /**
@@ -103,10 +117,12 @@ define([
      * @param {String} sUrl
      */
     this.insertImage = function ($editable, sUrl) {
-      async.loadImage(sUrl).done(function (image) {
+      async.createImage(sUrl).then(function ($image) {
         recordUndo($editable);
-        var $image = $('<img>').attr('src', sUrl);
-        $image.css('width', Math.min($editable.width(), image.width));
+        $image.css({
+          display: '',
+          width: Math.min($editable.width(), $image.width())
+        });
         range.create().insertNode($image[0]);
       }).fail(function () {
         var callbacks = $editable.data('callbacks');
@@ -274,40 +290,36 @@ define([
     };
 
     /**
-     * set linkInfo before link dialog opened.
-     * @param {jQuery} $editable
-     * @param {Function} fnShowDialog
+     * get link info
+     *
+     * @return {Promise}
      */
-    this.setLinkDialog = function ($editable, fnShowDialog) {
-      var rng = range.create(),
-          bNewWindow = true;
+    this.getLinkInfo = function () {
+      var rng = range.create();
+      var bNewWindow = true;
+      var sUrl = '';
 
-      // If range on anchor (Edit).
+      // If range on anchor expand range on anchor(for edit link).
       if (rng.isOnAnchor()) {
-        // expand range on anchor.
         var elAnchor = dom.ancestor(rng.sc, dom.isAnchor);
         rng = range.createFromNode(elAnchor);
         bNewWindow = $(elAnchor).attr('target') === '_blank';
+        sUrl = elAnchor.href;
       }
 
-      var self = this;
-      fnShowDialog({
+      return {
         text: rng.toString(),
-        url: rng.isOnAnchor() ? dom.ancestor(rng.sc, dom.isAnchor).href : '',
+        url: sUrl,
         newWindow: bNewWindow
-      }, function (sLinkUrl, bNewWindow) {
-        // restore range
-        rng.select();
-        self.createLink($editable, sLinkUrl, bNewWindow);
-      });
+      };
     };
 
     /**
-     * set videoInfo before video dialog opend.
-     * @param {jQuery} $editable
-     * @param {Function} fnShowDialog
+     * get video info
+     *
+     * @return {Object}
      */
-    this.setVideoDialog = function ($editable, fnShowDialog) {
+    this.getVideoInfo = function () {
       var rng = range.create();
 
       if (rng.isOnAnchor()) {
@@ -315,13 +327,9 @@ define([
         rng = range.createFromNode(elAnchor);
       }
 
-      var self = this;
-      fnShowDialog({
+      return {
         text: rng.toString()
-      }, function (sLinkUrl) {
-        rng.select();
-        self.insertVideo($editable, sLinkUrl);
-      });
+      };
     };
 
     this.color = function ($editable, sObjColor) {
@@ -339,31 +347,65 @@ define([
       range.create().insertNode(table.createTable(aDim[0], aDim[1]));
     };
 
-    this.floatMe = function ($editable, sValue, elTarget) {
+    /**
+     * @param {jQuery} $editable
+     * @param {String} sValue
+     * @param {jQuery} $target
+     */
+    this.floatMe = function ($editable, sValue, $target) {
       recordUndo($editable);
-      elTarget.style.cssFloat = sValue;
+      $target.css('float', sValue);
     };
 
     /**
-     * resize target
+     * resize overlay element
      * @param {jQuery} $editable
      * @param {String} sValue
-     * @param {Element} elTarget - target element
+     * @param {jQuery} $target - target element
      */
-    this.resize = function ($editable, sValue, elTarget) {
+    this.resize = function ($editable, sValue, $target) {
       recordUndo($editable);
-      elTarget.style.width = $editable.width() * sValue + 'px';
-      elTarget.style.height = '';
-    };
-
-    this.resizeTo = function (pos, $target) {
-      var newRatio = pos.y / pos.x;
-      var ratio = $target.data('ratio');
 
       $target.css({
-        width: ratio > newRatio ? pos.x : pos.y / ratio,
-        height: ratio > newRatio ? pos.x * ratio : pos.y
+        width: $editable.width() * sValue + 'px',
+        height: ''
       });
+    };
+
+    /**
+     * @param {Position} pos
+     * @param {jQuery} $target - target element
+     * @param {Boolean} [bKeepRatio] - keep ratio
+     */
+    this.resizeTo = function (pos, $target, bKeepRatio) {
+      var szImage;
+      if (bKeepRatio) {
+        var newRatio = pos.y / pos.x;
+        var ratio = $target.data('ratio');
+        szImage = {
+          width: ratio > newRatio ? pos.x : pos.y / ratio,
+          height: ratio > newRatio ? pos.x * ratio : pos.y
+        };
+      } else {
+        szImage = {
+          width: pos.x,
+          height: pos.y
+        };
+      }
+
+      $target.css(szImage);
+    };
+
+    /**
+     * remove media object
+     *
+     * @param {jQuery} $editable
+     * @param {String} sValue - dummy argument (for keep interface)
+     * @param {jQuery} $target - target element
+     */
+    this.removeMedia = function ($editable, sValue, $target) {
+      recordUndo($editable);
+      $target.detach();
     };
   };
 
