@@ -1,20 +1,21 @@
 {
-    "name": "HackerWins/summernote",
-    "description": "Super Simple WYSIWYG Editor on Bootstrap(3.0 and 2.x).",
-    "type": "library",
-    "keywords": [
-        "wysiwyg"
-    ],
-    "homepage": "http://hackerwins.github.io/summernote/",
-    "license": "MIT",
-    "authors": [
-        {
-            "name": "Alan",
-            "email": "susukang98@gmail.com",
-            "role": "lead"
+    "name": "taalendigitaal/bootstrap-summernote",
+    "description": "Bootstrap Wysiwyg Editor",
+    "type": "component",
+    "require": {
+        "robloach/component-installer": "*"
+    },
+    "extra": {
+        "component": {
+            "scripts": [
+                "summernote.js"
+            ],
+            "styles": [
+                "dist/summernote.css"
+            ],
+            "files": [
+                "dist/summernote.min.js"
+            ]
         }
-    ],
-    "support": {
-        "issues": "https://github.com/HackerWins/summernote/issues"
     }
 }
