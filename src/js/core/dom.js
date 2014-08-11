@@ -1,4 +1,4 @@
-define(['core/func', 'core/list', 'core/agent'], function (func, list, agent) {
+define(['summernote/core/func', 'summernote/core/list', 'summernote/core/agent'], function (func, list, agent) {
   /**
    * Dom functions
    */
@@ -24,20 +24,40 @@ define(['core/func', 'core/list', 'core/agent'], function (func, list, agent) {
      * @return {Object}
      */
     var buildLayoutInfo = function ($editor) {
-      var makeFinder = function (sClassName) {
-        return function () { return $editor.find(sClassName); };
-      };
-      return {
-        editor: function () { return $editor; },
-        dropzone: makeFinder('.note-dropzone'),
-        toolbar: makeFinder('.note-toolbar'),
-        editable: makeFinder('.note-editable'),
-        codable: makeFinder('.note-codable'),
-        statusbar: makeFinder('.note-statusbar'),
-        popover: makeFinder('.note-popover'),
-        handle: makeFinder('.note-handle'),
-        dialog: makeFinder('.note-dialog')
-      };
+      var makeFinder;
+
+      // air mode
+      if ($editor.hasClass('note-air-editor')) {
+        var id = list.last($editor.attr('id').split('-'));
+        makeFinder = function (sIdPrefix) {
+          return function () { return $(sIdPrefix + id); };
+        };
+
+        return {
+          editor: function () { return $editor; },
+          editable: function () { return $editor; },
+          popover: makeFinder('#note-popover-'),
+          handle: makeFinder('#note-handle-'),
+          dialog: makeFinder('#note-dialog-')
+        };
+
+      // frame mode
+      } else {
+        makeFinder = function (sClassName) {
+          return function () { return $editor.find(sClassName); };
+        };
+        return {
+          editor: function () { return $editor; },
+          dropzone: makeFinder('.note-dropzone'),
+          toolbar: makeFinder('.note-toolbar'),
+          editable: makeFinder('.note-editable'),
+          codable: makeFinder('.note-codable'),
+          statusbar: makeFinder('.note-statusbar'),
+          popover: makeFinder('.note-popover'),
+          handle: makeFinder('.note-handle'),
+          dialog: makeFinder('.note-dialog')
+        };
+      }
     };
 
     /**
@@ -121,14 +141,14 @@ define(['core/func', 'core/list', 'core/agent'], function (func, list, agent) {
     var listBetween = function (nodeA, nodeB) {
       var aNode = [];
   
-      var bStart = false, bEnd = false;
+      var isStart = false, isEnd = false;
 
       // DFS(depth first search) with commonAcestor.
       (function fnWalk(node) {
         if (!node) { return; } // traverse fisnish
-        if (node === nodeA) { bStart = true; } // start point
-        if (bStart && !bEnd) { aNode.push(node); } // between
-        if (node === nodeB) { bEnd = true; return; } // end point
+        if (node === nodeA) { isStart = true; } // start point
+        if (isStart && !isEnd) { aNode.push(node); } // between
+        if (node === nodeB) { isEnd = true; return; } // end point
 
         for (var idx = 0, sz = node.childNodes.length; idx < sz; idx++) {
           fnWalk(node.childNodes[idx]);
@@ -148,8 +168,8 @@ define(['core/func', 'core/list', 'core/agent'], function (func, list, agent) {
   
       var aNext = [];
       while (node) {
-        aNext.push(node);
         if (pred(node)) { break; }
+        aNext.push(node);
         node = node.previousSibling;
       }
       return aNext;
@@ -166,8 +186,8 @@ define(['core/func', 'core/list', 'core/agent'], function (func, list, agent) {
   
       var aNext = [];
       while (node) {
-        aNext.push(node);
         if (pred(node)) { break; }
+        aNext.push(node);
         node = node.nextSibling;
       }
       return aNext;
@@ -194,6 +214,23 @@ define(['core/func', 'core/list', 'core/agent'], function (func, list, agent) {
       })(node);
 
       return aDescendant;
+    };
+
+    /**
+     * wrap node with new tag.
+     *
+     * @param {Element} node
+     * @param {Element} tagName of wrapper
+     * @return {Element} - wrapper
+     */
+    var wrap = function (node, wrapperName) {
+      var parent = node.parentNode;
+      var wrapper = $('<' + wrapperName + '>')[0];
+
+      parent.insertBefore(wrapper, node);
+      wrapper.appendChild(node);
+
+      return wrapper;
     };
   
     /**
@@ -226,6 +263,15 @@ define(['core/func', 'core/list', 'core/agent'], function (func, list, agent) {
     };
   
     var isText = makePredByNodeName('#text');
+
+    /**
+     * returns whether node is textNode on `note-editable` or not.
+     *
+     * @param {Element} node
+     */
+    var isRootText = function (node) {
+      return dom.isText(node) && isEditable(node.parentNode);
+    };
   
     /**
      * returns #text's text size or element's childNodes size
@@ -236,7 +282,18 @@ define(['core/func', 'core/list', 'core/agent'], function (func, list, agent) {
       if (isText(node)) { return node.nodeValue.length; }
       return node.childNodes.length;
     };
-  
+
+    /**
+     * returns whether boundaryPoint is edge or not.
+     *
+     * @param {BoundaryPoint} boundaryPoitn
+     * @return {Boolean}
+     */
+    var isEdgeBP = function (boundaryPoint) {
+      return boundaryPoint.offset === 0 ||
+             boundaryPoint.offset === length(boundaryPoint.node);
+    };
+
     /**
      * returns offset from parent.
      *
@@ -246,6 +303,33 @@ define(['core/func', 'core/list', 'core/agent'], function (func, list, agent) {
       var offset = 0;
       while ((node = node.previousSibling)) { offset += 1; }
       return offset;
+    };
+
+    var hasChildren = function (node) {
+      return node && node.childNodes && node.childNodes.length;
+    };
+
+    /**
+     * returns previous boundaryPoint
+     *
+     * @param {BoundaryPoint} boundaryPoitn
+     * @return {BoundaryPoint}
+     */
+    var prevBP = function (boundaryPoint) {
+      var node = boundaryPoint.node,
+          offset = boundaryPoint.offset;
+
+      if (offset === 0) {
+        if (isEditable(node)) { return null; }
+        return {node: node.parentNode, offset: position(node)};
+      } else {
+        if (hasChildren(node)) {
+          var child = node.childNodes[offset - 1];
+          return {node: child, offset: length(child)};
+        } else {
+          return {node: node, offset: offset - 1};
+        }
+      }
     };
   
     /**
@@ -279,7 +363,7 @@ define(['core/func', 'core/list', 'core/agent'], function (func, list, agent) {
      * @param {Element} node
      * @param {Number} offset
      */
-    var splitData = function (node, offset) {
+    var split = function (node, offset) {
       if (offset === 0) { return node; }
       if (offset >= length(node)) { return node.nextSibling; }
   
@@ -299,20 +383,20 @@ define(['core/func', 'core/list', 'core/agent'], function (func, list, agent) {
      * @param {Element} pivot - this will be boundaryPoint's node
      * @param {Number} offset - this will be boundaryPoint's offset
      */
-    var split = function (root, pivot, offset) {
+    var splitTree = function (root, pivot, offset) {
       var aAncestor = listAncestor(pivot, func.eq(root));
-      if (aAncestor.length === 1) { return splitData(pivot, offset); }
+      if (aAncestor.length === 1) { return split(pivot, offset); }
       return aAncestor.reduce(function (node, parent) {
         var clone = parent.cloneNode(false);
         insertAfter(clone, parent);
         if (node === pivot) {
-          node = splitData(node, offset);
+          node = split(node, offset);
         }
         appends(clone, listNext(node));
         return clone;
       });
     };
-  
+
     /**
      * remove node, (bRemoveChild: remove child or not)
      * @param {Element} node
@@ -343,12 +427,13 @@ define(['core/func', 'core/list', 'core/agent'], function (func, list, agent) {
     };
   
     return {
-      blank: agent.bMSIE ? '&nbsp;' : '<br/>',
+      blank: agent.isMSIE ? '&nbsp;' : '<br/>',
       emptyPara: '<p><br/></p>',
       isEditable: isEditable,
       isControlSizing: isControlSizing,
       buildLayoutInfo: buildLayoutInfo,
       isText: isText,
+      isRootText: isRootText,
       isPara: isPara,
       isList: isList,
       isTable: makePredByNodeName('TABLE'),
@@ -363,6 +448,9 @@ define(['core/func', 'core/list', 'core/agent'], function (func, list, agent) {
       isI: makePredByNodeName('I'),
       isImg: makePredByNodeName('IMG'),
       isTextarea: makePredByNodeName('TEXTAREA'),
+      length: length,
+      isEdgeBP: isEdgeBP,
+      prevBP: prevBP,
       ancestor: ancestor,
       listAncestor: listAncestor,
       listNext: listNext,
@@ -370,11 +458,12 @@ define(['core/func', 'core/list', 'core/agent'], function (func, list, agent) {
       listDescendant: listDescendant,
       commonAncestor: commonAncestor,
       listBetween: listBetween,
+      wrap: wrap,
       insertAfter: insertAfter,
       position: position,
       makeOffsetPath: makeOffsetPath,
       fromOffsetPath: fromOffsetPath,
-      split: split,
+      splitTree: splitTree,
       remove: remove,
       html: html
     };

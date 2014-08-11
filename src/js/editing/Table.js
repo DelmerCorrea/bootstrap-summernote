@@ -1,5 +1,5 @@
 define([
-  'core/dom', 'core/range', 'core/list'
+  'summernote/core/dom', 'summernote/core/range', 'summernote/core/list'
 ], function (dom, range, list) {
   /**
    * Table
@@ -10,14 +10,14 @@ define([
      * handle tab key
      *
      * @param {WrappedRange} rng
-     * @param {Boolean} bShift
+     * @param {Boolean} isShift
      */
-    this.tab = function (rng, bShift) {
+    this.tab = function (rng, isShift) {
       var elCell = dom.ancestor(rng.commonAncestor(), dom.isCell);
       var elTable = dom.ancestor(elCell, dom.isTable);
       var aCell = dom.listDescendant(elTable, dom.isCell);
 
-      var elNext = list[bShift ? 'prev' : 'next'](aCell, elCell);
+      var elNext = list[isShift ? 'prev' : 'next'](aCell, elCell);
       if (elNext) {
         range.create(elNext, 0).select();
       }

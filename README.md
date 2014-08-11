@@ -29,15 +29,15 @@ Summernote uses opensouce libraries(jQuery, bootstrap, fontAwesome)
 Include Following code into `<head>` tag of your HTML:
 
 ```html
-<!-- include libries(jQuery, bootstrap, fontawesome) -->
+<!-- include libraries(jQuery, bootstrap, fontawesome) -->
 <script type="text/javascript" src="//code.jquery.com/jquery-1.9.1.min.js"></script> 
 <link rel="stylesheet" href="//netdna.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap.min.css" />
 <script type="text/javascript" src="//netdna.bootstrapcdn.com/bootstrap/3.1.1/js/bootstrap.min.js"></script>
 <link rel="stylesheet" href="//netdna.bootstrapcdn.com/font-awesome/4.0.3/css/font-awesome.min.css" />
 
 <!-- include summernote css/js-->
-<link rel="stylesheet" href="summernote.css" />
-<script type="text/javascript" src="summernote.min.js"></script>
+<link href="//oss.maxcdn.com/summernote/0.5.1/summernote.css" rel="stylesheet">
+<script src="//oss.maxcdn.com/summernote/0.5.1/summernote.min.js"></script>
 ```
 
 If your summernote download is placed in a different folder, don't forget to change file's paths.
@@ -71,15 +71,14 @@ $('#summernote').destroy();
 
 #### Dependencies
 * jQuery: http://jquery.com/
-* bootstrap: http://twitter.github.io/bootstrap (both 2.x and 3.x)
+* Bootstrap: http://getbootstrap.com (both 2.x and 3.x)
 * fontAwesome: https://github.com/FortAwesome/Font-Awesome (both 3.x and 4.x)
 
 ### Supported platform
 * Modern Browser (Safari, Chrome, Firefox, Opera, Internet Explorer 9+)
-* OS (Windows, Mac)
+* OS (Windows, Mac, Linux)
 
 ### Upcoming Features
-* Air Mode
 * Responsive Toolbar
 * Table: Handles(Sizing, Selection) and Popover
 * support IE8
@@ -87,6 +86,10 @@ $('#summernote').destroy();
 * Media Object Selection
 
 ### Change Log
+
+#### v0.5.2 2014-07-20
+* Air Mode
+* And bug patch (scroll, createLink, ...)
 
 #### v0.5.1 2014-03-16
 * Support 15 Languages(https://github.com/HackerWins/summernote/tree/master/lang)

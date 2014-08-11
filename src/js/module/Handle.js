@@ -1,4 +1,4 @@
-define('module/Handle', function () {
+define('summernote/module/Handle', function () {
   /**
    * Handle
    */
@@ -7,13 +7,20 @@ define('module/Handle', function () {
      * update handle
      * @param {jQuery} $handle
      * @param {Object} oStyle
+     * @param {Boolean} isAirMode
      */
-    this.update = function ($handle, oStyle) {
+    this.update = function ($handle, oStyle, isAirMode) {
       var $selection = $handle.find('.note-control-selection');
       if (oStyle.image) {
         var $image = $(oStyle.image);
-        var pos = $image.position();
-        var szImage = {w: $image.width(), h: $image.height()};
+        var pos = isAirMode ? $image.offset() : $image.position();
+
+        // include margin
+        var szImage = {
+          w: $image.outerWidth(true),
+          h: $image.outerHeight(true)
+        };
+
         $selection.css({
           display: 'block',
           left: pos.left,

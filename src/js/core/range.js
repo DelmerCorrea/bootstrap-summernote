@@ -1,19 +1,21 @@
 define([
-  'core/func', 'core/list', 'core/dom'
+  'summernote/core/func',
+  'summernote/core/list',
+  'summernote/core/dom'
 ], function (func, list, dom) {
   /**
    * range module
    */
   var range = (function () {
-    var bW3CRangeSupport = !!document.createRange;
+    var isW3CRangeSupport = !!document.createRange;
      
     /**
      * return boundaryPoint from TextRange, inspired by Andy Na's HuskyRange.js
      * @param {TextRange} textRange
-     * @param {Boolean} bStart
+     * @param {Boolean} isStart
      * @return {BoundaryPoint}
      */
-    var textRange2bp = function (textRange, bStart) {
+    var textRange2bp = function (textRange, isStart) {
       var elCont = textRange.parentElement(), nOffset;
   
       var tester = document.body.createTextRange(), elPrevCont;
@@ -44,7 +46,7 @@ define([
         var sDummy = elCurText.nodeValue; //enforce IE to re-reference elCurText, hack
         /* jshint ignore:end */
   
-        if (bStart && elCurText.nextSibling && dom.isText(elCurText.nextSibling) &&
+        if (isStart && elCurText.nextSibling && dom.isText(elCurText.nextSibling) &&
             nTextCount === elCurText.nodeValue.length) {
           nTextCount -= elCurText.nodeValue.length;
           elCurText = elCurText.nextSibling;
@@ -64,25 +66,25 @@ define([
      */
     var bp2textRange = function (bp) {
       var textRangeInfo = function (elCont, nOffset) {
-        var elNode, bCollapseToStart;
+        var elNode, isCollapseToStart;
   
         if (dom.isText(elCont)) {
           var aPrevText = dom.listPrev(elCont, func.not(dom.isText));
           var elPrevCont = list.last(aPrevText).previousSibling;
           elNode =  elPrevCont || elCont.parentNode;
           nOffset += list.sum(list.tail(aPrevText), dom.length);
-          bCollapseToStart = !elPrevCont;
+          isCollapseToStart = !elPrevCont;
         } else {
           elNode = elCont.childNodes[nOffset] || elCont;
           if (dom.isText(elNode)) {
-            return textRangeInfo(elNode, nOffset);
+            return textRangeInfo(elNode, 0);
           }
   
           nOffset = 0;
-          bCollapseToStart = false;
+          isCollapseToStart = false;
         }
   
-        return {cont: elNode, collapseToStart: bCollapseToStart, offset: nOffset};
+        return {cont: elNode, collapseToStart: isCollapseToStart, offset: nOffset};
       };
   
       var textRange = document.body.createTextRange();
@@ -110,7 +112,7 @@ define([
   
       // nativeRange: get nativeRange from sc, so, ec, eo
       var nativeRange = function () {
-        if (bW3CRangeSupport) {
+        if (isW3CRangeSupport) {
           var w3cRange = document.createRange();
           w3cRange.setStart(sc, so);
           w3cRange.setEnd(ec, eo);
@@ -122,12 +124,35 @@ define([
         }
       };
 
+      this.getBPs = function () {
+        return {
+          sc: sc,
+          so: so,
+          ec: ec,
+          eo: eo
+        };
+      };
+
+      this.getStartBP = function () {
+        return {
+          node: sc,
+          offset: so
+        };
+      };
+
+      this.getEndBP = function () {
+        return {
+          node: ec,
+          offset: eo
+        };
+      };
+
       /**
        * select update visible range
        */
       this.select = function () {
         var nativeRng = nativeRange();
-        if (bW3CRangeSupport) {
+        if (isW3CRangeSupport) {
           var selection = document.getSelection();
           if (selection.rangeCount > 0) { selection.removeAllRanges(); }
           selection.addRange(nativeRng);
@@ -139,10 +164,12 @@ define([
       /**
        * returns matched nodes on range
        *
-       * @param {Function} pred - predicate function
+       * @param {Function} [pred] - predicate function
        * @return {Element[]}
        */
       this.nodes = function (pred) {
+        pred = pred || func.ok;
+
         var aNode = dom.listBetween(sc, ec);
         var aMatched = list.compact($.map(aNode, function (node) {
           return dom.ancestor(node, pred);
@@ -156,6 +183,105 @@ define([
        */
       this.commonAncestor = function () {
         return dom.commonAncestor(sc, ec);
+      };
+
+      /**
+       * returns expanded range by pred
+       *
+       * @param {Function} pred - predicate function
+       * @return {WrappedRange}
+       */
+      this.expand = function (pred) {
+        var startAncestor = dom.ancestor(sc, pred);
+        var endAncestor = dom.ancestor(ec, pred);
+
+        if (!startAncestor && !endAncestor) {
+          return new WrappedRange(sc, so, ec, eo);
+        }
+
+        var boundaryPoints = this.getBPs();
+
+        if (startAncestor) {
+          boundaryPoints.sc = startAncestor;
+          boundaryPoints.so = 0;
+        }
+
+        if (endAncestor) {
+          boundaryPoints.ec = endAncestor;
+          boundaryPoints.eo = dom.length(endAncestor);
+        }
+
+        return new WrappedRange(
+          boundaryPoints.sc,
+          boundaryPoints.so,
+          boundaryPoints.ec,
+          boundaryPoints.eo
+        );
+      };
+
+      /**
+       * @param {Boolean} isCollapseToStart
+       * @return {WrappedRange}
+       */
+      this.collapse = function (isCollapseToStart) {
+        if (isCollapseToStart) {
+          return new WrappedRange(sc, so, sc, so);
+        } else {
+          return new WrappedRange(ec, eo, ec, eo);
+        }
+      };
+
+      /**
+       * splitText on range
+       */
+      this.splitText = function () {
+        var isSameContainer = sc === ec;
+        var boundaryPoints = this.getBPs();
+
+        if (dom.isText(ec) && !dom.isEdgeBP(this.getEndBP())) {
+          ec.splitText(eo);
+        }
+
+        if (dom.isText(sc) && !dom.isEdgeBP(this.getStartBP())) {
+          boundaryPoints.sc = sc.splitText(so);
+          boundaryPoints.so = 0;
+
+          if (isSameContainer) {
+            boundaryPoints.ec = boundaryPoints.sc;
+            boundaryPoints.eo = eo - so;
+          }
+        }
+
+        return new WrappedRange(
+          boundaryPoints.sc,
+          boundaryPoints.so,
+          boundaryPoints.ec,
+          boundaryPoints.eo
+        );
+      };
+
+      /**
+       * delete contents on range
+       * @return {WrappedRange}
+       */
+      this.deleteContents = function () {
+        if (this.isCollapsed()) {
+          return this;
+        }
+
+        var rng = this.splitText();
+        var prevBP = dom.prevBP(rng.getStartBP());
+
+        $.each(rng.nodes(), function (idx, node) {
+          dom.remove(node, !dom.isPara(node));
+        });
+
+        return new WrappedRange(
+          prevBP.node,
+          prevBP.offset,
+          prevBP.node,
+          prevBP.offset
+        );
       };
       
       /**
@@ -185,24 +311,43 @@ define([
        */
       this.insertNode = function (node) {
         var nativeRng = nativeRange();
-        if (bW3CRangeSupport) {
+        if (isW3CRangeSupport) {
           nativeRng.insertNode(node);
         } else {
-          nativeRng.pasteHTML(node.outerHTML); // NOTE: missing node reference.
+          var tmpId = 'node-insert-node-target';
+          node.id = tmpId;
+
+          // NOTE: missing node reference.
+          nativeRng.pasteHTML(node.outerHTML);
+          node = $('#' + tmpId)[0];
         }
+
+        return node;
       };
   
       this.toString = function () {
         var nativeRng = nativeRange();
-        return bW3CRangeSupport ? nativeRng.toString() : nativeRng.text;
+        return isW3CRangeSupport ? nativeRng.toString() : nativeRng.text;
       };
   
-      // bookmark: offsetPath bookmark
+      /**
+       * create offsetPath bookmark
+       * @param {Element} elEditable
+       */
       this.bookmark = function (elEditable) {
         return {
           s: { path: dom.makeOffsetPath(elEditable, sc), offset: so },
           e: { path: dom.makeOffsetPath(elEditable, ec), offset: eo }
         };
+      };
+
+      /**
+       * getClientRects
+       * @return {Rect[]}
+       */
+      this.getClientRects = function () {
+        var nativeRng = nativeRange();
+        return nativeRng.getClientRects();
       };
     };
   
@@ -216,8 +361,8 @@ define([
        * @param {Number} eo - end offset
        */
       create : function (sc, so, ec, eo) {
-        if (arguments.length === 0) { // from Browser Selection
-          if (bW3CRangeSupport) { // webkit, firefox
+        if (!arguments.length) { // from Browser Selection
+          if (isW3CRangeSupport) { // webkit, firefox
             var selection = document.getSelection();
             if (selection.rangeCount === 0) { return null; }
   
