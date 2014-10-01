@@ -25,8 +25,7 @@ define('summernote/settings', function () {
       codemirror: {                 // codemirror options
         mode: 'text/html',
         htmlMode: true,
-        lineNumbers: true,
-        autoFormatOnStart: false
+        lineNumbers: true
       },
 
       // language
@@ -135,6 +134,7 @@ define('summernote/settings', function () {
 
       keyMap: {
         pc: {
+          'ENTER': 'insertParagraph',
           'CTRL+Z': 'undo',
           'CTRL+Y': 'redo',
           'TAB': 'tab',
@@ -164,6 +164,7 @@ define('summernote/settings', function () {
         },
 
         mac: {
+          'ENTER': 'insertParagraph',
           'CMD+Z': 'undo',
           'CMD+SHIFT+Z': 'redo',
           'TAB': 'tab',
