@@ -1,22 +1,7 @@
 {
     "name": "taalendigitaal/bootstrap-summernote",
-    "description": "Super Simple WYSIWYG Editor on Bootstrap(3.0 and 2.x).",
+    "description": "Bootstrap Wysiwyg Editor",
     "type": "component",
-    "keywords": [
-        "wysiwyg"
-    ],
-    "homepage": "http://summernote.org/",
-    "license": "MIT",
-    "authors": [
-        {
-            "name": "Alan",
-            "email": "susukang98@gmail.com",
-            "role": "lead"
-        }
-    ],
-    "support": {
-        "issues": "https://github.com/summernote/summernote/issues"
-    },
     "require": {
         "robloach/component-installer": "*"
     },
@@ -29,8 +14,7 @@
                 "dist/summernote.css"
             ],
             "files": [
-                "dist/summernote.min.js",
-                "dist/lang/summernote-*.js"
+                "dist/summernote.min.js"
             ]
         }
     }
