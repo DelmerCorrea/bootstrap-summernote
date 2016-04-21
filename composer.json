@@ -29,7 +29,8 @@
                 "dist/summernote.css"
             ],
             "files": [
-                "dist/summernote.min.js"
+                "dist/summernote.min.js",
+                "dist/lang/summernote-*.js"
             ]
         }
     }
