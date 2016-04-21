@@ -14,7 +14,14 @@
                 "dist/summernote.css"
             ],
             "files": [
-                "dist/summernote.min.js"
+                "dist/summernote.min.js",
+
+                "dist/font/summernote.eot",
+                "dist/font/summernote.ttf",
+                "dist/font/summernote.woff",
+
+                "dist/lang/summernote-*-*.js",
+                "dist/lang/summernote-*-*.min.js"
             ]
         }
     }
