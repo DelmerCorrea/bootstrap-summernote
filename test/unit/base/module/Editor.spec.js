@@ -96,6 +96,19 @@ define([
       });
     });
 
+    if (agent.isWebkit) {
+      /* jshint ignore:start */
+      describe('insertImage', function () {
+        it('should insert image', function () {
+          var source = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAYAAAAGCAYAAADgzO9IAAAAF0lEQVQYGWP8////fwYsgAmLGFiIHhIAT+oECGHuN2UAAAAASUVORK5CYII=';
+          return editor.insertImage(source, 'image').then(function () {
+            expectContents(context, '<p>hello<img src="' + source + '" data-filename="image" style="width: 0px;"></p>');
+          });
+        });
+      });
+      /* jshint ignore:end */
+    }
+
     describe('insertOrderedList and insertUnorderedList', function () {
       it('should toggle paragraph to list', function () {
         editor.insertOrderedList();
@@ -114,7 +127,7 @@ define([
       if (agent.isPhantom) {
         it('should indent and outdent paragraph', function () {
           editor.indent();
-          expectContents(context, '<p style="margin-left: 25px; ">hello</p>');
+          expectContents(context, '<p style="margin-left: 25px;">hello</p>');
 
           editor.outdent();
           expectContents(context, '<p style="">hello</p>');
@@ -151,6 +164,23 @@ define([
       it('should paste html', function () {
         editor.pasteHTML('<span> world</span>');
         expectContents(context, '<p>hello<span> world</span></p>');
+      });
+
+      it('should not call change change event more than once per paste event', function () {
+        var generateLargeHtml = function () {
+          var html = '<div>';
+          for (var i = 0; i < 1000; i++) {
+            html += '<p>HTML element #' + i + '</p>';
+          }
+          html += '</div>';
+          return html;
+        };
+        var $note = context.layoutInfo.note;
+        var spy = chai.spy();
+        $note.on('summernote.change', spy);
+        var html = generateLargeHtml();
+        editor.pasteHTML(html);
+        expect(spy).to.have.been.called.once;
       });
     });
 

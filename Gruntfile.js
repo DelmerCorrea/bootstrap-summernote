@@ -47,25 +47,25 @@ module.exports = function (grunt) {
     'SL_EDGE': {
       base: 'SauceLabs',
       browserName: 'microsoftedge',
-      version: '20',
+      version: 'latest',
       platform: 'windows 10'
     },
     'SL_CHROME': {
       base: 'SauceLabs',
       browserName: 'chrome',
-      version: '43',
+      version: 'latest',
       platform: 'windows 8'
     },
     'SL_FIREFOX': {
       base: 'SauceLabs',
       browserName: 'firefox',
-      version: '38',
+      version: 'latest',
       platform: 'windows 8'
     },
     'SL_SAFARI': {
       base: 'SauceLabs',
       browserName: 'safari',
-      version: '8.0',
+      version: 'latest',
       platform: 'OS X 10.10'
     }
   };
@@ -76,12 +76,25 @@ module.exports = function (grunt) {
 
     // bulid source(grunt-build.js).
     build: {
-      all: {
+      all: [{
+        baseUrl: 'src/js',
+        startFile: 'intro.js',
+        endFile: 'outro.js',
+        entryFile: 'summernote/bs3/settings',
+        outFile: 'dist/summernote.js'
+      }, {
+        baseUrl: 'src/js',
+        startFile: 'intro.js',
+        endFile: 'outro.js',
+        entryFile: 'summernote/bs4/settings',
+        outFile: 'dist/summernote-bs4.js'
+      }, {
         baseUrl: 'src/js',        // base url
         startFile: 'intro.js',    // intro part
         endFile: 'outro.js',      // outro part
-        outFile: 'dist/summernote.js' // out file
-      }
+        entryFile: 'summernote/lite/settings',
+        outFile: 'dist/summernote-lite.js' // out file
+      }]
     },
 
     // for javascript convention.
@@ -107,7 +120,7 @@ module.exports = function (grunt) {
     },
 
     jscs: {
-      src: ['*.js', 'src/**/*.js', 'test/**/*.js'],
+      src: ['*.js', 'src/**/*.js', 'test/**/*.js', 'plugin/**/*.js'],
       gruntfile: 'Gruntfile.js',
       build: 'build'
     },
@@ -115,16 +128,24 @@ module.exports = function (grunt) {
     // uglify: minify javascript
     uglify: {
       options: {
-        banner: '/*! Summernote v<%=pkg.version%> | (c) 2013-2015 Alan Hong and other contributors | MIT license */\n'
+        banner: '/*! Summernote v<%=pkg.version%> | (c) 2013- Alan Hong and other contributors | MIT license */\n'
       },
       all: {
         files: [
-          { 'dist/summernote.min.js': ['dist/summernote.js'] },
+            { 'dist/summernote.min.js': ['dist/summernote.js'] },
+            { 'dist/summernote-bs4.min.js': ['dist/summernote-bs4.js'] },
           {
             expand: true,
             cwd: 'dist/lang',
             src: '**/*.js',
             dest: 'dist/lang',
+            ext: '.min.js'
+          },
+          {
+            expand: true,
+            cwd: 'dist/plugin',
+            src: '**/*.js',
+            dest: 'dist/plugin',
             ext: '.min.js'
           }
         ]
@@ -135,9 +156,21 @@ module.exports = function (grunt) {
     recess: {
       dist: {
         options: { compile: true, compress: true },
-        files: {
-          'dist/summernote.css': ['src/less/summernote.less']
-        }
+        files: [
+          {
+            'dist/summernote.css': ['src/less/summernote.less'],
+            'dist/summernote-bs4.css': ['src/less/summernote-bs4.less'],
+            'dist/summernote-lite.css': ['src/less/summernote-lite.less']
+
+          },
+          {
+            expand: true,
+            cwd: 'dist/plugin',
+            src: '**/*.css',
+            dest: 'dist/plugin',
+            ext: '.min.css'
+          }
+        ]
       }
     },
 
@@ -160,7 +193,7 @@ module.exports = function (grunt) {
             'dist/font/*'
           ]
         }, {
-          src: ['plugin/**/*.js', 'lang/**/*.js'],
+          src: ['plugin/**/*.js', 'plugin/**/*.css', 'lang/**/*.js'],
           dest: 'dist/'
         }]
       }
@@ -202,6 +235,7 @@ module.exports = function (grunt) {
       },
       all: {
         // Chrome, ChromeCanary, Firefox, Opera, Safari, PhantomJS, IE
+        singleRun: true,
         browsers: ['PhantomJS'],
         reporters: ['progress']
       },
@@ -245,8 +279,7 @@ module.exports = function (grunt) {
       dist: {
         files: [
           { src: 'lang/*', dest: 'dist/' },
-          { expand: true, cwd: 'src/icons/dist/font/', src: ['**', '!*.html'], dest: 'dist/font/' },
-          { src: 'src/icons/dist/summernote.css', dest: 'src/icons/dist/summernote.less' }
+          { expand: true, cwd: 'src/icons/dist/font/', src: ['**', '!*.html'], dest: 'dist/font/' }
         ]
       }
     },
@@ -257,6 +290,8 @@ module.exports = function (grunt) {
         destCss: 'src/icons/dist/',
         options: {
           font: 'summernote',
+          relativeFontPath: './font/',
+          stylesheet: 'less',
           template: 'src/icons/templates/summernote.css'
         }
       }
@@ -269,7 +304,7 @@ module.exports = function (grunt) {
   // load all grunts/*.js
   grunt.loadTasks('grunts');
 
-  // server: runt server for development
+  // server: run server for development
   grunt.registerTask('server', ['connect', 'watch']);
 
   // lint
