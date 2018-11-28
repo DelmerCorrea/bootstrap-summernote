@@ -32,11 +32,6 @@ Publish on npm
 npm publish
 ```
 
-Publish on meteor
-```bash
-meteor/publish.sh
-```
-
 ### 05. Update summernote.github.io
 Update summernote version in _config.yml.
 
